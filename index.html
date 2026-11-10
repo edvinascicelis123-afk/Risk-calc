@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7fb">
+  <title>Risk calc</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{color-scheme:light;--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#697386;--line:#dce2ec;--idle:#eef1f6;--idle-text:#596579;--green:#e2f7ec;--green-text:#12683b;--red:#fde8e7;--red-text:#a32225;--amber:#fff3d4;--amber-text:#805400;--blue:#e5f1ff;--blue-text:#205a91;--accent:#375de8}
+    @media(prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#10141d;--card:#1a202c;--text:#edf1f8;--muted:#a0aabd;--line:#343c4c;--idle:#262d3a;--idle-text:#c0c8d6;--green:#153b2a;--green-text:#8ce0ae;--red:#482323;--red-text:#ffaaa7;--amber:#453719;--amber-text:#f2d27e;--blue:#1c3650;--blue-text:#9ccafa;--accent:#8399ff}}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Manrope,system-ui,-apple-system,"Segoe UI",sans-serif}
+    main{max-width:460px;margin:0 auto;padding:24px 16px 36px}.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}h1{font-size:25px;line-height:1.2;margin:0;font-weight:800}.pill{border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:var(--muted);font-size:12px;font-weight:700}
+    .result{border-radius:18px;padding:21px 18px;margin-bottom:18px;background:var(--idle);color:var(--idle-text);text-align:center;min-height:110px;display:grid;align-content:center;gap:3px}.result.ok{background:var(--green);color:var(--green-text)}.result.blocked{background:var(--red);color:var(--red-text)}.lots{font-size:37px;line-height:1.15;font-weight:800;letter-spacing:-1px}.result-label{font-size:13px;font-weight:700}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}.label{display:block;font-size:12px;font-weight:700;margin-bottom:7px}.pairs,.direction,.stepper,.actions{display:flex;gap:8px}.pairs{margin-bottom:14px}.direction{margin-bottom:16px}.pairs button,.direction button,.stepper button,.actions button{font:inherit;font-weight:700;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--text);cursor:pointer;min-height:42px}.pairs button{flex:1;padding:8px 4px;font-size:12px}.pairs button.active,.direction button.active{background:var(--accent);border-color:var(--accent);color:white}.direction button{flex:1}
+    .field{min-width:0}.stepper{align-items:center}.stepper button{width:44px;font-size:20px}.stepper input{flex:1;text-align:center}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}.hidden{display:none!important}
+    input{width:100%;height:42px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--text);padding:0 11px;font:inherit;font-variant-numeric:tabular-nums}input:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid color-mix(in srgb,var(--accent),transparent 55%);outline-offset:2px}
+    .actions{flex-direction:column;margin-top:14px}.actions button{padding:9px 12px}.actions button.primary{background:var(--accent);border-color:var(--accent);color:white}.actions button:disabled{opacity:.5;cursor:not-allowed}
+    details summary{font-weight:800;cursor:pointer;list-style-position:inside}.settings{padding-top:14px}.settings .grid{margin-top:0}.warnings{display:grid;gap:8px;margin-top:14px}.message{border-radius:10px;padding:10px 12px;font-size:12px;font-weight:600}.message.error{background:var(--red);color:var(--red-text)}.message.warn{background:var(--amber);color:var(--amber-text)}.message.note{background:var(--blue);color:var(--blue-text)}.message[hidden]{display:none}
+  </style>
+</head>
+<body>
+<main>
+  <header class="top"><h1>Risk calc</h1><span class="pill" id="trade-count">0 of 2 trades</span></header>
+  <section class="result" id="result" aria-live="polite"><div class="lots" id="lots">—</div><div class="result-label" id="result-label">Type stop in pips</div></section>
+  <section class="card" aria-label="Trade setup">
+    <span class="label">Currency pair</span>
+    <div class="pairs" role="group" aria-label="Currency pair">
+      <button type="button" class="active" data-pair="EUR/USD" aria-pressed="true">EUR/USD</button><button type="button" data-pair="GBP/USD" aria-pressed="false">GBP/USD</button><button type="button" data-pair="USD/JPY" aria-pressed="false">USD/JPY</button>
+    </div>
+    <span class="label">Direction</span>
+    <div class="direction" role="group" aria-label="Trade direction"><button type="button" class="active" data-side="Buy" aria-pressed="true">Buy</button><button type="button" data-side="Sell" aria-pressed="false">Sell</button></div>
+    <label class="label" for="stop">Stop in pips</label>
+    <div class="stepper"><button type="button" id="minus" aria-label="Decrease stop by one pip">−1</button><input id="stop" type="number" min="0" step="0.1" inputmode="decimal" placeholder="e.g. 8"><button type="button" id="plus" aria-label="Increase stop by one pip">+1</button></div>
+    <div class="grid">
+      <div class="field"><label class="label" for="target">Target in pips (optional)</label><input id="target" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Optional"></div>
+      <div class="field"><label class="label" for="spread">Spread in pips</label><input id="spread" type="number" min="0" step="0.1" inputmode="decimal" value="0.5"></div>
+      <div class="field hidden" id="jpy-field"><label class="label" for="jpy-price">USD/JPY price</label><input id="jpy-price" type="number" min="0.0001" step="0.001" inputmode="decimal" value="150"></div>
+    </div>
+    <div class="actions"><button type="button" class="primary" id="taken">+ Trade taken</button><button type="button" id="stopout">+ Stop-out</button><button type="button" id="reset">Reset day</button></div>
+  </section>
+  <section class="card">
+    <details><summary>Day and settings</summary><div class="settings grid">
+      <div class="field"><label class="label" for="lost">Lost today in $</label><input id="lost" type="number" min="0" step="0.01" value="0"></div>
+      <div class="field"><label class="label" for="account">Account size in $</label><input id="account" type="number" min="0" step="100" value="6000"></div>
+      <div class="field"><label class="label" for="risk">Risk %</label><input id="risk" type="number" min="0" step="0.1" value="0.5"></div>
+      <div class="field"><label class="label" for="max-loss">Max daily loss in $</label><input id="max-loss" type="number" min="0" step="1" value="60"></div>
+      <div class="field"><label class="label" for="min-rr">Minimum R:R</label><input id="min-rr" type="number" min="0" step="0.1" value="2"></div>
+    </div></details>
+  </section>
+  <div class="warnings" id="warnings" aria-live="polite"></div>
+</main>
+<script>
+  const $=id=>document.getElementById(id);
+  const fields=["stop","target","spread","jpy-price","lost","account","risk","max-loss","min-rr"];
+  let pair="EUR/USD",side="Buy",trades=0,lastRisk=null,lastValid=false;
+  const value=id=>Number($(id).value);
+  function calculate(){
+    const stop=value("stop"),spread=value("spread"),targetText=$("target").value;
+    const budget=value("max-loss")-value("lost"),risk=value("account")*value("risk")/100;
+    const effectiveStop=stop+spread,range=pair==="USD/JPY"?[8,15]:[4,15];
+    // Pip value is quoted in USD; JPY pairs convert the 1,000-yen pip to dollars at the entered rate.
+    const pipValue=pair==="USD/JPY"?1000/value("jpy-price"):10;
+    const exactLots=risk/(effectiveStop*pipValue),lots=Math.floor((exactLots+1e-10)*100)/100;
+    const reasons=[],rr=targetText?((value("target")-spread)/effectiveStop):null;
+    if(!$("stop").value||!Number.isFinite(stop)||stop<=0){idle();return}
+    if(!Number.isFinite(spread)||spread<0)reasons.push("Spread must be zero or more pips.");
+    if(effectiveStop<range[0]||effectiveStop>range[1])reasons.push(`Effective stop must be ${range[0]}–${range[1]} pips for ${pair}.`);
+    if(targetText&&(!Number.isFinite(rr)||rr<value("min-rr"))){
+      const needed=spread+effectiveStop*value("min-rr");
+      reasons.push(`R:R is below ${value("min-rr")}:1; target at least ${needed.toFixed(1)} pips from chart price.`);
+    }
+    if(trades>=2)reasons.push("Two trades already taken.");
+    if(budget<=0)reasons.push("No daily budget left.");
+    if(risk>budget&&budget>0)reasons.push(`Stop-out cost ($${risk.toFixed(2)}) is above the $${budget.toFixed(2)} budget left.`);
+    if(!Number.isFinite(lots)||lots<=0)reasons.push("Lots round to 0.");
+    if(pair==="USD/JPY"&&(!Number.isFinite(value("jpy-price"))||value("jpy-price")<=0))reasons.push("Enter a valid USD/JPY price.");
+    lastRisk=risk;lastValid=reasons.length===0;
+    $("result").className="result "+(lastValid?"ok":"blocked");
+    $("lots").textContent=lastValid?lots.toFixed(2)+" lots":"SKIP";
+    $("result-label").textContent=lastValid?`TAKE · risks $${risk.toFixed(2)} · R:R ${rr===null?"—":rr.toFixed(2)}`:"Review the reasons below";
+    const messages=reasons.map(text=>`<div class="message error">${text}</div>`);
+    if(lastValid)messages.push('<div class="message warn">Confirm the lot size in your trading platform.</div>');
+    if(rr!==null&&Number.isFinite(rr)&&rr>=value("min-rr")&&rr<=value("min-rr")+0.25)messages.push('<div class="message warn">R:R is within 0.25 of the minimum.</div>');
+    messages.push('<div class="message note">Spread assumption: '+(Number.isFinite(spread)?spread:"—")+' pips; entry and target fills are adjusted against you.</div>');
+    $("warnings").innerHTML=messages.join("");
+    $("stopout").disabled=!lastValid;$("taken").disabled=trades>=2;
+  }
+  function idle(){$("result").className="result";$("lots").textContent="—";$("result-label").textContent="Type stop in pips";$("warnings").innerHTML='<div class="message note">Spread assumption: '+$("spread").value+' pips; entry and target fills are adjusted against you.</div>';lastRisk=null;lastValid=false;$("stopout").disabled=true;$("taken").disabled=trades>=2}
+  document.querySelectorAll("[data-pair]").forEach(b=>b.onclick=()=>{pair=b.dataset.pair;document.querySelectorAll("[data-pair]").forEach(x=>{x.classList.toggle("active",x===b);x.setAttribute("aria-pressed",x===b)});$("jpy-field").classList.toggle("hidden",pair!=="USD/JPY");calculate()});
+  document.querySelectorAll("[data-side]").forEach(b=>b.onclick=()=>{side=b.dataset.side;document.querySelectorAll("[data-side]").forEach(x=>{x.classList.toggle("active",x===b);x.setAttribute("aria-pressed",x===b)})});
+  fields.forEach(id=>$(id).addEventListener("input",calculate));
+  $("minus").onclick=()=>{$("stop").value=Math.max(0,(value("stop")||0)-1);calculate()};
+  $("plus").onclick=()=>{$("stop").value=(value("stop")||0)+1;calculate()};
+  $("taken").onclick=()=>{if(trades<2){trades++;$("trade-count").textContent=`${trades} of 2 trades`;calculate()}};
+  $("stopout").onclick=()=>{if(lastValid&&lastRisk!==null){$("lost").value=(value("lost")+lastRisk).toFixed(2);calculate()}};
+  $("reset").onclick=()=>{trades=0;$("lost").value="0";$("trade-count").textContent="0 of 2 trades";calculate()};
+  calculate();
+</script>
+</body>
+</html>
